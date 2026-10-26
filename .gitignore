@@ -1,0 +1,33 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Keys and certificates
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# Compiled binaries and build artifacts
+/vpn
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Editor / OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
