@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -87,10 +86,9 @@ func setupClientRoutes(tunName string, serverIP net.IP) (*netlink.Route, error) 
 }
 
 func runClient(serverAddrStr string) {
-	keyStr := os.Getenv("KEY")
-	key, err := hex.DecodeString(keyStr)
-	if err != nil || len(key) != 32 {
-		log.Fatalf("Invalid KEY (expected 64-char hex string for 32-byte AES-256 key): %v", err)
+	key := []byte(os.Getenv("KEY"))
+	if len(key) != 32 {
+		log.Fatalf("Invalid KEY (expected 32-character key for XChaCha20-Poly1305, got %d bytes)", len(key))
 	}
 
 	tun, ifName, err := createTun("tun0")
