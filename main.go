@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"errors"
 	"flag"
@@ -12,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/vishvananda/netlink"
-	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/sys/unix"
 )
 
@@ -66,36 +67,45 @@ func configureTun(name string, cidr string, mtu int) error {
 }
 
 func encrypt(plaintext []byte, key []byte) ([]byte, error) {
-	aead, err := chacha20poly1305.NewX(key)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce := make([]byte, aead.NonceSize())
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, aesGCM.NonceSize())
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, err
 	}
 
-	// Layout: [Nonce (24)] + [Ciphertext] + [MAC (16)]
-	encrypted := aead.Seal(nonce, nonce, plaintext, nil)
+	encrypted := aesGCM.Seal(nonce, nonce, plaintext, nil)
 	return encrypted, nil
 }
 
 func decrypt(encrypted []byte, key []byte) ([]byte, error) {
-	aead, err := chacha20poly1305.NewX(key)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	nonceSize := aead.NonceSize()
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
 
-	if len(encrypted) < nonceSize+aead.Overhead() {
+	nonceSize := aesGCM.NonceSize()
+
+	if len(encrypted) < nonceSize {
 		return nil, errors.New("ciphertext too short")
 	}
 
 	nonce, ciphertext := encrypted[:nonceSize], encrypted[nonceSize:]
 
-	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, err
 	}
